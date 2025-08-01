@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "605216259136",
+    "project_id": "workshops-78f5a",
+    "storage_bucket": "workshops-78f5a.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:605216259136:android:77dbd2f6c1f9864f5873a5",
+        "android_client_info": {
+          "package_name": "com.ict_works"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "605216259136-cp0btc6mv3poc7npob4audmjv2moh8v1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ict_works",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "605216259136-k4m01ckam6ont3804sfhsijvfilqhbb4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBTE6ampo7KCNoikQiBbQRe6RZ9YCMOwD0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "605216259136-k4m01ckam6ont3804sfhsijvfilqhbb4.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
