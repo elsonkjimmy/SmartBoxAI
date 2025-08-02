@@ -11,6 +11,9 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
+import { GEMINI_API_KEY } from '@env';
+import Markdown from 'react-native-markdown-display';
+import { TextStyle } from 'react-native';
 
 interface Message {
   id: string;
@@ -32,42 +35,111 @@ const ChatScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const flatListRef = useRef<FlatList>(null);
 
-  const sendMessage = async () => {
-    if (!inputText.trim() || isLoading) return;
+const sendMessage = async () => {
+  if (!inputText.trim() || isLoading) return;
 
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      text: inputText.trim(),
-      isUser: true,
+  const userMessage: Message = {
+    id: Date.now().toString(),
+    text: inputText.trim(),
+    isUser: true,
+    timestamp: new Date(),
+  };
+
+  setMessages((prev) => [...prev, userMessage]);
+  setInputText('');
+  setIsLoading(true);
+
+  try {
+    // Utiliser le bon nom de modèle - gemini-1.5-flash ou gemini-1.5-pro
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: userMessage.text }],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 1024,
+          },
+        }),
+      }
+    );
+
+    // Vérifier le statut de la réponse
+    if (!response.ok) {
+      console.error('Erreur HTTP:', response.status, response.statusText);
+      const errorText = await response.text();
+      console.error('Détails de l\'erreur:', errorText);
+      
+      throw new Error(`Erreur API: ${response.status} - ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log('Réponse complète de l\'API:', JSON.stringify(data, null, 2));
+
+    // Extraction du texte de réponse
+    let aiText = "Je n'ai pas compris.";
+
+    if (data.candidates && data.candidates.length > 0) {
+      const candidate = data.candidates[0];
+      
+      if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
+        aiText = candidate.content.parts
+          .map((part: any) => part.text)
+          .filter(Boolean)
+          .join('\n');
+      }
+    }
+
+    // Vérifier si on a une réponse valide
+    if (!aiText || aiText.trim() === '' || aiText === "Je n'ai pas compris.") {
+      aiText = "L'IA n'a pas fourni de réponse valide.";
+    }
+
+    console.log('Texte final extrait:', aiText);
+
+    const aiMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      text: aiText,
+      isUser: false,
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, newMessage]);
-    setInputText('');
-    setIsLoading(true);
+    setMessages((prev) => [...prev, aiMessage]);
+  } catch (error) {
+    console.error('Erreur détaillée:', error);
 
-    setTimeout(() => {
-      const aiResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        text: generateAIResponse(newMessage.text),
-        isUser: false,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, aiResponse]);
-      setIsLoading(false);
-    }, 1500);
-  };
+    let errorMessage = "Erreur lors de la communication avec l'IA.";
+    
+    if (error instanceof Error) {
+      if (error.message.includes('404')) {
+        errorMessage = "Modèle non trouvé. Vérifiez le nom du modèle utilisé.";
+      } else if (error.message.includes('API key') || error.message.includes('403')) {
+        errorMessage = "Problème avec la clé API. Vérifiez votre configuration.";
+      } else if (error.message.includes('429')) {
+        errorMessage = "Trop de requêtes. Attendez un moment avant de réessayer.";
+      } else if (error.message.includes('400')) {
+        errorMessage = "Requête invalide. Vérifiez le format du message.";
+      }
+    }
 
-  const generateAIResponse = (userMessage: string): string => {
-    const responses = [
-      "C'est une excellente question ! Laissez-moi réfléchir à la meilleure façon de vous aider.",
-      "Je comprends votre demande. Voici ce que je peux vous suggérer...",
-      "Intéressant ! D'après mes connaissances, je peux vous dire que...",
-      "Merci pour cette question. Permettez-moi de vous donner une réponse détaillée.",
-      "C'est un sujet fascinant ! Voici mon analyse...",
-    ];
-    return responses[Math.floor(Math.random() * responses.length)];
-  };
+    const errorMsg: Message = {
+      id: (Date.now() + 1).toString(),
+      text: errorMessage,
+      isUser: false,
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, errorMsg]);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const renderMessage = ({ item }: { item: Message }) => (
     <View
@@ -78,7 +150,7 @@ const ChatScreen: React.FC = () => {
     >
       <View style={styles.messageHeader}>
         <Icon
-          name={item.isUser ? 'user' : 'android'} // 'android' used as robot icon
+          name={item.isUser ? 'user' : 'android'}
           size={16}
           color="#00ADB5"
         />
@@ -89,7 +161,11 @@ const ChatScreen: React.FC = () => {
           })}
         </Text>
       </View>
-      <Text style={styles.messageText}>{item.text}</Text>
+      {item.isUser ? (
+        <Text style={styles.messageText}>{item.text}</Text>
+      ) : (
+        <Markdown style={markdownStyles}>{item.text}</Markdown>
+      )}
     </View>
   );
 
@@ -109,7 +185,9 @@ const ChatScreen: React.FC = () => {
         keyExtractor={(item) => item.id}
         style={styles.messagesContainer}
         contentContainerStyle={styles.messagesContent}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+        onContentSizeChange={() =>
+          flatListRef.current?.scrollToEnd({ animated: true })
+        }
         onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
       />
 
@@ -162,7 +240,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 24,
-    fontFamily: 'Inter-Bold', // Assure-toi que la police est bien chargée, sinon mets une alternative
+    fontFamily: 'Inter-Bold',
     color: '#EEEEEE',
     textAlign: 'center',
   },
@@ -195,7 +273,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 4,
-    gap: 6, // 💡 `gap` fonctionne uniquement avec React Native 0.71+ ou avec `react-native-flex-gap`
+    gap: 6,
   },
   messageTime: {
     fontSize: 10,
@@ -249,5 +327,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#333333',
   },
 });
+
+// 🎨 Style Markdown (gras, italique, etc.)
+const markdownStyles: { [key: string]: TextStyle } = {
+  body: {
+    color: '#EEEEEE',
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    lineHeight: 22,
+  },
+  strong: {
+    fontWeight: 'bold', 
+    color: '#FFDD00',
+  },
+  em: {
+    fontStyle: 'italic',
+    color: '#AAAAAA',
+  },
+  paragraph: {
+    marginBottom: 8,
+  },
+};
 
 export default ChatScreen;
