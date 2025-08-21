@@ -14,7 +14,7 @@ if linkage != nil
   use_frameworks! :linkage => linkage.to_sym
 end
 
-target 'ict_works' do
+target 'SmartboxAI' do
   config = use_native_modules!
 
   use_react_native!(
@@ -23,7 +23,7 @@ target 'ict_works' do
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
 
-  target 'ict_worksTests' do
+  target 'SmartboxAITests' do
     inherit! :complete
     # Pods for testing
   end

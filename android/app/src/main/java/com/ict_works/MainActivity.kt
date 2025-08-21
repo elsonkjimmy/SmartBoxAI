@@ -14,7 +14,7 @@ class MainActivity : ReactActivity() {
       super.onCreate(savedInstanceState)
   }
 
-  override fun getMainComponentName(): String = "ict_works"
+  override fun getMainComponentName(): String = "Smartbox AI"
 
   override fun createReactActivityDelegate(): ReactActivityDelegate =
       DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
